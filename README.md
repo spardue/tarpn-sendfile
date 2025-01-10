@@ -8,3 +8,9 @@ Example:
 ./tarpn-sendfile.py --to CALL-SIGN --subject "test" --file tarpn-sendfile.py
 ```
 
+
+The following will sync all the files it finds in the BBS inbox:
+```shell
+./tarpn-sendfile.py --sync
+```
+If there are any files in your inbox, they will be under `/home/pi/tarpn-sendfile-inbox`
