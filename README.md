@@ -5,7 +5,7 @@ The following example will send a file referenced by `--file` to the BBS of `-to
 Example:
 
 ```shell
-./tarpn-sendfile.py --to CALL-SIGN --subject "test" --file tarpn-sendfile.py
+./tarpn-sendfile.py --to CALL-SIGN "test" --file tarpn-sendfile.py
 ```
 
 
