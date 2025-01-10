@@ -94,13 +94,14 @@ def process_mes_files():
         try:
             with open(mes_file, 'r') as f:
                 content = f.read().strip()
-                
-                # Check if the file starts with @!#
-                if not content.startswith('@!#'):
+                marker_pos = content.find('@!#')
+
+                if marker_pos == -1: # not found
                     continue
                 
+                
                 # Extract the JSON part (remove the @!# prefix)
-                json_str = content[3:]
+                json_str = content[marker_pos+3:]
                 
                 try:
                     # Parse the JSON data
