@@ -2,6 +2,10 @@
 import telnetlib
 import time
 import argparse
+import os
+import json
+import base64
+import glob
 
 def parse_config_file(filename):
     config_dict = {}
@@ -45,6 +49,17 @@ def sendBBSMessage(tn, call, subject, body):
     sendCommand(tn, subject)
     response = sendCommand(tn, f"{body}\r\n/ex")
 
+def sendFile(tn, call, filename, body):
+    msg = {}
+
+    body = base64.b85encode(body).decode('ascii')
+
+    msg['filename'] = filename
+    msg['body'] = body
+    jsonMsg = json.dumps(msg)
+    msg = f"@!#{jsonMsg}"
+    sendBBSMessage(tn, call, "tarpn-sendfile", msg)
+
 def telnet_to_bpq(args):
     HOST = "localhost"
     PORT = 8011
@@ -55,30 +70,93 @@ def telnet_to_bpq(args):
         print(f"Connected to {HOST}:{PORT}")
         time.sleep(1)  # Allow server to initialize
         connect(tn)
-        with open(args.file, "r") as file:
+        with open(args.file, "rb") as file:
             content = file.read().strip()
-        response = sendBBSMessage(tn, args.to, args.subject , content)
+        head, tail = os.path.split(args.file)
+        response = sendFile(tn, args.to, tail, content)
         print(response)
         tn.close()
     except Exception as e:
         print(f"Error: {e}")
 
+def process_mes_files():
+    # Input and output directory paths
+    input_dir = '/home/pi/bpq/Mail'
+    output_dir = '/home/pi/tarpn-sendfile-inbox'
+    
+    # Ensure output directory exists
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Get all .mes files in the input directory
+    mes_files = glob.glob(os.path.join(input_dir, '*.mes'))
+    
+    for mes_file in mes_files:
+        try:
+            with open(mes_file, 'r') as f:
+                content = f.read().strip()
+                
+                # Check if the file starts with @!#
+                if not content.startswith('@!#'):
+                    continue
+                
+                # Extract the JSON part (remove the @!# prefix)
+                json_str = content[3:]
+                
+                try:
+                    # Parse the JSON data
+                    data = json.loads(json_str)
+                    
+                    # Extract filename and encoded body
+                    output_filename = data.get('filename')
+                    encoded_body = data.get('body')
+                    
+                    if not output_filename or not encoded_body:
+                        print(f"Missing required fields in {mes_file}")
+                        continue
+                    
+                    # Create full output path
+                    output_path = os.path.join(output_dir, output_filename)
+                    
+                    # Decode the base85 content
+                    try:
+                        decoded_content = base64.b85decode(encoded_body)
+                        
+                        # Write the decoded content to the output file
+                        with open(output_path, 'wb') as out_file:
+                            out_file.write(decoded_content)
+                            
+                        print(f"Successfully processed {mes_file} -> {output_path}")
+                        
+                    except Exception as e:
+                        print(f"Error decoding base85 content in {mes_file}: {str(e)}")
+                        
+                except json.JSONDecodeError as e:
+                    print(f"Invalid JSON format in {mes_file}: {str(e)}")
+                    
+        except Exception as e:
+            print(f"Error processing file {mes_file}: {str(e)}")
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Extract parameters from the command line for an amateur radio message.")
 
     # Define the required arguments
-    parser.add_argument("--to", required=True, help="Amateur radio call sign of the recipient")
-    parser.add_argument("--subject", required=True, help="Short subject for the message")
-    parser.add_argument("--file", required=True, help="Path of the file to send")
+    parser.add_argument("--to", required=False, help="Amateur radio call sign of the recipient")
+    parser.add_argument("--file", required=False, help="Path of the file to send")
+    parser.add_argument("--sync", action='store_true', required=False, help="Download files from BBS messages into the inbox")
+
 
     # Parse arguments
     args = parser.parse_args()
 
     # Print the extracted values
-    print(f"To: {args.to}")
-    print(f"Subject: {args.subject}")
-    print(f"File: {args.file}")
 
 
-    telnet_to_bpq(args)
+    if args.to and args.file:
+        print(f"To: {args.to}")
+        print(f"File: {args.file}")
+        telnet_to_bpq(args)
+    elif args.sync:
+        process_mes_files()
+    else:
+        print("Try -h")
 
