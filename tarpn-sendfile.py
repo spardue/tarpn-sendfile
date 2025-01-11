@@ -17,9 +17,9 @@ def parse_config_file(filename):
             if not line or line.startswith("#"):  # Ignore blank lines and comments
                 continue
 
-            # Split the line at the first '=' into key and value
+            # Split the line at the first ':' into key and value
             if ":" in line:
-                key, value = line.split(":", 1)  # Split only at the first '='
+                key, value = line.split(":", 1)  # Split only at the first ':'
                 config_dict[key.strip()] = value.strip()
 
     return config_dict
