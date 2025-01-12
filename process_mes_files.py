@@ -23,17 +23,18 @@ def process_mes_files_to_base64():
                     continue
                 
                 # Extract the JSON part (remove the @!# prefix)
-                json_str = content[marker_pos+3:]
+                json_str = content[marker_pos+3:].strip()
                 
                 try:
                     # Parse the JSON data
                     data = json.loads(json_str)
+                    print(mes_file, data)
                     
                     # Extract filename and encoded body
                     output_filename = data.get('filename')
                     encoded_body = data.get('body')
                     note = data.get('note')
-                    mime_type = data.get('mime_type')
+                    mimetype = data.get('mimetype')
                     
                     if not output_filename or not encoded_body:
                         print(f"Missing required fields in {mes_file}")
@@ -49,7 +50,7 @@ def process_mes_files_to_base64():
                             'filename': output_filename,
                             'content_base64': base64_content,
                             'note': note,
-                            'mime_type': mime_type
+                            'mimetype': mimetype
                         })
                         
                         print(f"Successfully processed {mes_file}")
@@ -58,7 +59,7 @@ def process_mes_files_to_base64():
                         print(f"Error decoding base85 content in {mes_file}: {str(e)}")
                         
                 except json.JSONDecodeError as e:
-                    print(f"Invalid JSON format in {mes_file}: {str(e)}")
+                    print(f"Invalid JSON format in {mes_file}: {str(e)}", json_str)
                     
         except Exception as e:
             print(f"Error processing file {mes_file}: {str(e)}")

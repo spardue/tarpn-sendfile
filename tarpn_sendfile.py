@@ -90,7 +90,8 @@ def send_over_rf(args, to):
         time.sleep(1)  # Allow server to initialize
         connect(tn)
         for callsign in to:
-            msg = f"@!#{args}"
+            json_data = json.dumps(args)
+            msg = f"@!#{json_data}"
             sendBBSMessage(tn, callsign, "tarpn-sendfile", msg)
         tn.close()
     except Exception as e:
