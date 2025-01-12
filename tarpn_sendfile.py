@@ -79,6 +79,23 @@ def telnet_to_bpq(args):
     except Exception as e:
         print(f"Error: {e}")
 
+def send_over_rf(args, to):
+    HOST = "localhost"
+    PORT = 8011
+
+    try:
+        # Connect to the Telnet server
+        tn = telnetlib.Telnet(HOST, PORT, timeout=5)
+        print(f"Connected to {HOST}:{PORT}")
+        time.sleep(1)  # Allow server to initialize
+        connect(tn)
+        for callsign in to:
+            msg = f"@!#{args}"
+            sendBBSMessage(tn, callsign, "tarpn-sendfile", msg)
+        tn.close()
+    except Exception as e:
+        print(f"Error: {e}")
+
 def process_mes_files():
     # Input and output directory paths
     input_dir = '/home/pi/bpq/Mail'

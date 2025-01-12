@@ -3,6 +3,8 @@ import base64
 import magic  # Requires `pip install python-magic`
 from typing import List
 
+from tarpn_sendfile import send_over_rf
+
 app = FastAPI()
 
 def encode_file(file_bytes, filename, note):
@@ -23,5 +25,6 @@ async def send_file(to: List[str] = Form(...), note: str = Form(...), file: Uplo
     """Handles file uploads and returns Base85-encoded content."""
     file_bytes = await file.read()
     encoded_data = encode_file(file_bytes, file.filename, note)
+    send_over_rf(encoded_data, to)
     return encoded_data
 
