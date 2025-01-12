@@ -43,7 +43,7 @@ html_template = """
     <div class="container">
         <h1>Upload a File</h1>
         <form action="/upload/" method="post" enctype="multipart/form-data">
-            <label>To (comma-separated emails):</label><br>
+            <label>To (comma-separated call signs):</label><br>
             <input type="text" name="to" required><br><br>
             <label>Note:</label><br>
             <input type="text" name="note" required><br><br>
