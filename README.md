@@ -34,5 +34,5 @@ uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 
 Send a file to other stations:
 ```shell
-curl -X 'POST' 'http://127.0.0.1:8000/send_file/'      -F 'callsigns=K5ABC'      -F 'to=N1XYZ'      -F 'to=W4RT'      -F 'file=@app.py' -F 'note=Hello there friends'
+Navigate to :8000 on a browser (not on the pi)
 ```
