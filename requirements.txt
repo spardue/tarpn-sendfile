@@ -2,3 +2,4 @@ fastapi
 uvicorn
 python-magic
 python-multipart
+jinja2

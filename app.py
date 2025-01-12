@@ -6,6 +6,9 @@ from typing import List
 from tarpn_sendfile import send_over_rf
 from process_mes_files import process_mes_files_to_base64
 
+from fastapi.responses import HTMLResponse
+from jinja2 import Template
+
 app = FastAPI()
 
 def encode_file(file_bytes, filename, note):
@@ -32,3 +35,48 @@ async def send_file(to: List[str] = Form(...), note: str = Form(...), file: Uplo
 @app.get("/feed")
 async def feed():
     return process_mes_files_to_base64()
+
+# Jinja2 HTML Template
+html_template = """
+    <div class="card">
+        <h2>Filename: {{ filename }}</h2>
+        <p><strong>Note:</strong> {{ note }}</p>
+        <p><strong>MIME Type:</strong> {{ mimetype }}</p>
+        <p><strong>Decoded Content:</strong></p>
+        <pre>{{ content }}</pre>
+    </div>
+"""
+
+@app.get("/", response_class=HTMLResponse)
+async def display_feed():
+    messages = process_mes_files_to_base64()
+    rendered_html = """
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>JSON Feed</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; padding: 20px; }
+                .card { border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 5px; }
+                pre { background: #f4f4f4; padding: 10px; border-radius: 5px; overflow-x: auto; }
+            </style>
+        </head>
+        <body>
+            <h1>Data Feed</h1>
+    """
+    for data in messages:
+        content_decoded = base64.b64decode(data["content_base64"]).decode("utf-8", errors="ignore")
+
+    # Render HTML using Jinja2
+        template = Template(html_template)
+        rendered_html += template.render(
+            filename=data["filename"],
+            note=data["note"],
+            mimetype=data["mimetype"],
+            content=content_decoded
+        )
+    rendered_html += "</body></html>"
+
+    return HTMLResponse(content=rendered_html)
