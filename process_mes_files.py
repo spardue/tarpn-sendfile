@@ -35,8 +35,11 @@ def process_mes_files_to_base64():
                     encoded_body = data.get('body')
                     note = data.get('note')
                     mimetype = data.get('mimetype')
+                    to = data.get('to')
+                    _from = data.get('from')
                     
-                    if not output_filename or not encoded_body:
+                    have_all_fields = output_filename and encoded_body and mimetype and to and _from
+                    if not have_all_fields:
                         print(f"Missing required fields in {mes_file}")
                         continue
                     
@@ -48,9 +51,12 @@ def process_mes_files_to_base64():
                         # Append to list
                         processed_files.append({
                             'filename': output_filename,
-                            'content_base64': base64_content,
+                            'body': base64_content,
                             'note': note,
-                            'mimetype': mimetype
+                            'mimetype': mimetype,
+                            'to': to,
+                            'from': _from
+
                         })
                         
                         print(f"Successfully processed {mes_file}")
