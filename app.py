@@ -1,29 +1,16 @@
 from fastapi import FastAPI, File, UploadFile, Form
+from fastapi.responses import HTMLResponse, Response, RedirectResponse
 import base64
 import magic  # Requires `pip install python-magic`
 from typing import List
+from jinja2 import Template
 
 from tarpn_sendfile import send_over_rf, CALL_SIGN
 from process_mes_files import process_mes_files_to_base64
 
-from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
-from jinja2 import Template
-
 app = FastAPI()
 
-def encode_file(file_bytes, filename, note):
-    """Encodes a file in Base85 and detects its MIME type."""
-    mime = magic.Magic(mime=True)
-    mime_type = mime.from_buffer(file_bytes)  # Detect from content
-    encoded_content = base64.b85encode(file_bytes).decode("ascii")
-
-    return {
-        "filename": filename,
-        "mimetype": mime_type,
-        "body": encoded_content,
-        "note": note,
-        "from": CALL_SIGN
-    }
+# Jinja2 HTML Template
 html_template = """
 <!DOCTYPE html>
 <html lang="en">
@@ -47,11 +34,8 @@ html_template = """
             <input type="text" name="to" required><br><br>
             <label>Note:</label><br>
             <input type="text" name="note" required><br><br>
-            <label>Please only upload small files. For images use .avif file with the quality reduced up to 10 percent. This can be done in gnome. To install gnome on your pi run the following linux command on your pi: </label>
-            <pre>
-            sudo apt install gimp
-            </pre>
-            <br>
+            <label>Please only upload small files. For images use .avif file with the quality reduced up to 10 percent.</label>
+            <pre>sudo apt install gimp</pre>
             <br>
             <input type="file" name="file" required>
             <br><br>
@@ -65,20 +49,14 @@ html_template = """
                 <p><strong>To:</strong> {{ file.to }}</p>
                 <p><strong>From:</strong> {{ file.from.upper() }}</p>
                 <p><strong>Note:</strong> {{ file.note }}</p>
-                <p><strong>Decoded Content:</strong></p>
 
                 {% if file.filename.endswith('.avif') %}
+                    <p><strong>Image Preview:</strong></p>
                     <img src="data:image/avif;base64,{{ file.body }}" alt="Uploaded Image" width="300">
-                {% elif file.filename.endswith('.txt') %}
-                    
-                    <pre id="txtContent"></pre>
-                    <script>
-                        const data = atob('{{ file.body }}');
-                        document.getElementById('txtContent').textContent = data;
-                    </script>
-                {% else %}
-                    <p>Download</p>
                 {% endif %}
+
+                <br>
+                <a href="/download/{{ file.filename }}" class="download-btn">Download File</a>
             </div>
         {% endfor %}
     </div>
@@ -88,6 +66,7 @@ html_template = """
 
 @app.get("/", response_class=HTMLResponse)
 async def upload_page():
+    """Renders the HTML page with uploaded files."""
     template = Template(html_template)
     uploaded_files = process_mes_files_to_base64()
     rendered_html = template.render(files=uploaded_files)
@@ -95,24 +74,41 @@ async def upload_page():
 
 @app.post("/upload/")
 async def upload_file(
-    to: str = Form(...),  # Accepts comma-separated recipients
+    to: str = Form(...),
     note: str = Form(...),
     file: UploadFile = File(...)
 ):
     """Handles file uploads and stores metadata."""
     file_bytes = await file.read()
     encoded_content = base64.b85encode(file_bytes).decode("utf-8")
-    toList = to.split(",")
+    to_list = to.split(",")
 
     data = {
         "filename": file.filename,
-        "to": to,  # Store as a string for now
+        "to": to,
         "mimetype": file.content_type,
         "body": encoded_content,
         "from": CALL_SIGN,
         "note": note
     }
 
-    send_over_rf(data, toList)
+    send_over_rf(data, to_list)
 
     return RedirectResponse(url="/", status_code=303)
+
+@app.get("/download/{filename}")
+async def download_file(filename: str):
+    """Retrieves and decodes files from the stored .msg messages and returns them as binary."""
+    uploaded_files = process_mes_files_to_base64()
+    
+    for file in uploaded_files:
+        if file["filename"] == filename:
+            decoded_bytes = base64.b64decode(file["body"])  # Decode Base85 back to binary
+            mime_type = file["mimetype"]  # Use the stored MIME type
+            
+            return Response(content=decoded_bytes, media_type=mime_type, headers={
+                "Content-Disposition": f"attachment; filename={filename}"
+            })
+
+    return HTMLResponse(content="File not found", status_code=404)
+
