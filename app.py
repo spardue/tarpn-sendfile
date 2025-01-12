@@ -4,6 +4,7 @@ import magic  # Requires `pip install python-magic`
 from typing import List
 
 from tarpn_sendfile import send_over_rf
+from process_mes_files import process_mes_files_to_base64
 
 app = FastAPI()
 
@@ -28,3 +29,6 @@ async def send_file(to: List[str] = Form(...), note: str = Form(...), file: Uplo
     send_over_rf(encoded_data, to)
     return encoded_data
 
+@app.get("/feed")
+async def feed():
+    return process_mes_files_to_base64()
